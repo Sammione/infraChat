@@ -24,22 +24,28 @@ const CEOPage = () => {
     }, []);
 
     const handleUpload = async (e) => {
-        const selectedFile = e.target.files[0];
-        if (!selectedFile) return;
+        const selectedFiles = Array.from(e.target.files);
+        if (selectedFiles.length === 0) return;
 
         setUploading(true);
         const formData = new FormData();
-        formData.append('file', selectedFile);
+        selectedFiles.forEach(file => {
+            formData.append('files', file);
+        });
 
         try {
-            await axios.post(`${API_URL}/upload`, formData);
+            await axios.post(`${API_URL}/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             fetchStatus();
-            alert("Document uploaded and indexed successfully!");
+            alert(`Successfully uploaded ${selectedFiles.length} file(s)!`);
         } catch (error) {
             console.error(error);
-            alert("Upload failed.");
+            alert("Upload failed. Make sure files are not too large and the backend is running.");
         } finally {
             setUploading(false);
+            // Reset input
+            e.target.value = null;
         }
     };
 
@@ -60,10 +66,17 @@ const CEOPage = () => {
                         </div>
 
                         <label className="upload-zone" style={{ display: 'block' }}>
-                            <input type="file" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
+                            <input
+                                type="file"
+                                style={{ display: 'none' }}
+                                onChange={handleUpload}
+                                disabled={uploading}
+                                multiple
+                                webkitdirectory="true"
+                            />
                             <Upload size={32} style={{ marginBottom: '1rem', color: 'var(--accent)' }} />
-                            <p>{uploading ? "Processing Document..." : "Click to Upload Context"}</p>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>PDF, TXT, or DOCX</span>
+                            <p>{uploading ? "Processing Files..." : "Click to Upload Context"}</p>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Select Files or a Folder</span>
                         </label>
                     </div>
 
@@ -78,8 +91,8 @@ const CEOPage = () => {
                 <main>
                     <Chat role="CEO" />
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

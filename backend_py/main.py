@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import os
 import json
 import shutil
+import tempfile
+from typing import List
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -68,28 +70,34 @@ class ChatRequest(BaseModel):
     message: str
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_files(files: List[UploadFile] = File(...)):
     try:
-        if not os.path.exists("uploads"):
-            os.makedirs("uploads")
+        results = []
+        temp_dir = tempfile.gettempdir()
         
-        file_path = f"uploads/{file.filename}"
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Upload to OpenAI
-        with open(file_path, "rb") as f:
-            openai_file = client.files.create(file=f, purpose="assistants")
-        
-        # Add to Vector Store
-        client.vector_stores.files.create(
-            vector_store_id=STATE["vector_store_id"],
-            file_id=openai_file.id
-        )
-        
-        os.remove(file_path)
-        return {"success": True, "filename": file.filename}
+        for file in files:
+            file_path = os.path.join(temp_dir, file.filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            # Upload to OpenAI
+            try:
+                with open(file_path, "rb") as f:
+                    openai_file = client.files.create(file=f, purpose="assistants")
+                
+                # Add to Vector Store
+                client.vector_stores.files.create(
+                    vector_store_id=STATE["vector_store_id"],
+                    file_id=openai_file.id
+                )
+                results.append({"filename": file.filename, "success": True})
+            finally:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    
+        return {"success": True, "files": results}
     except Exception as e:
+        print(f"Upload Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/ask")
