@@ -71,33 +71,43 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
+    print(f"Received upload request for {len(files)} files")
     try:
         results = []
         temp_dir = tempfile.gettempdir()
+        print(f"Using temp dir: {temp_dir}")
         
         for file in files:
+            print(f"Processing file: {file.filename}")
             file_path = os.path.join(temp_dir, file.filename)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             
             # Upload to OpenAI
             try:
+                print(f"Uploading {file.filename} to OpenAI...")
                 with open(file_path, "rb") as f:
                     openai_file = client.files.create(file=f, purpose="assistants")
+                print(f"OpenAI File ID: {openai_file.id}")
                 
                 # Add to Vector Store
+                print(f"Adding to Vector Store: {STATE['vector_store_id']}")
                 client.vector_stores.files.create(
                     vector_store_id=STATE["vector_store_id"],
                     file_id=openai_file.id
                 )
                 results.append({"filename": file.filename, "success": True})
+                print(f"Successfully indexed {file.filename}")
+            except Exception as inner_e:
+                print(f"Error processing {file.filename}: {str(inner_e)}")
+                results.append({"filename": file.filename, "success": False, "error": str(inner_e)})
             finally:
                 if os.path.exists(file_path):
                     os.remove(file_path)
                     
         return {"success": True, "files": results}
     except Exception as e:
-        print(f"Upload Error: {str(e)}")
+        print(f"Global Upload Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/ask")

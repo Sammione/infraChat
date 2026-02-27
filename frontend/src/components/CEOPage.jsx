@@ -40,8 +40,9 @@ const CEOPage = () => {
             fetchStatus();
             alert(`Successfully uploaded ${selectedFiles.length} file(s)!`);
         } catch (error) {
-            console.error(error);
-            alert("Upload failed. Make sure files are not too large and the backend is running.");
+            console.error("Upload Error Details:", error.response?.data || error.message);
+            const errorMsg = error.response?.data?.detail || "Upload failed. Check console for details.";
+            alert(`Upload Error: ${errorMsg}`);
         } finally {
             setUploading(false);
             // Reset input
@@ -72,7 +73,7 @@ const CEOPage = () => {
                                 onChange={handleUpload}
                                 disabled={uploading}
                                 multiple
-                                webkitdirectory="true"
+                                webkitdirectory=""
                             />
                             <Upload size={32} style={{ marginBottom: '1rem', color: 'var(--accent)' }} />
                             <p>{uploading ? "Processing Files..." : "Click to Upload Context"}</p>
