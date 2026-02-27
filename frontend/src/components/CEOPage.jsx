@@ -3,7 +3,7 @@ import { Upload, FileText, CheckCircle, Database } from 'lucide-react';
 import axios from 'axios';
 import Chat from './Chat';
 
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const CEOPage = () => {
     const [file, setFile] = useState(null);
